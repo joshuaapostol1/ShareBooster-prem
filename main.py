@@ -226,7 +226,7 @@ class ShareBooster:
                   border_style=self.info_border))
         self.email = self._prompt_ask("Email/Username", prompt_indicator="~")
         self.password = self._prompt_ask("Password",
-                                         prompt_indicator="~",
+                                         prompt_indicator="key",
                                          password=True)
 
     def fetch_cookies(self):
