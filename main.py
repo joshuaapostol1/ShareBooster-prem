@@ -26,12 +26,13 @@ graph_api = "https://graph.facebook.com/me/feed"
 
 session_cache_file = ".session.json"
 request_timeout = 15
-share_interval_seconds = 0.0001 
-max_log_entries = 500
+share_interval_seconds = 0.0001
+max_log_entries = 5000000
 
 
 class ShareBooster:
     
+    #ito yung secret xor key
     xor = "how"
     error_border = "bold #FF4136"
     error_text = "bold #FF4136"
@@ -42,8 +43,10 @@ class ShareBooster:
     warning_border = "bold #FF851B"
     warning_text = "bold #FF851B"
     
+    #ito naman sa name mo at name ko naka allen_kalbo
     allen_kalbo = "af804fc5d79cf1f861f7964b5437bb327827f452ce37f9d398e171faeb7b99c0"
-    
+    welcome_border = "bold #FFDC00"
+    welcome_title = "bold #FFBF00"
     credit_original = "italic #B0B0B0"
     credit_modifier = "italic #A0A0FF"
     prompt_bracket = "bold #00FF00"
@@ -52,17 +55,11 @@ class ShareBooster:
     column_attempt = "cyan"
     column_time = "magenta"
     column_details = "dim #D3D3D3"
-
-    premium_main_color = "gold1"
-    premium_title_color = "#FFBF00"
     
-    premium_badge = f"bold {premium_main_color}"
-    premium_panel_border = f"bold {premium_main_color}"
-    premium_panel_title = f"bold {premium_title_color}"
-    script_name_style = "bold chartreuse1"
-
+    #rui yang tite variable name mo yan Original Author yan
     tite = "3a1a1e483d12070818"
     
+    #ito naman akin
     pussy = "220004001a16482e07071c030703"
 
 
@@ -136,10 +133,8 @@ class ShareBooster:
         except (json.JSONDecodeError, FileNotFoundError):
             return {}
         except Exception as e:
-            console_to_use = getattr(self, 'stderr', Console(stderr=True))
-            console_to_use.print(f"[bold red]ERROR[/]: Failed to load cached data: {e}")
+            print(f"[ERROR] Failed to load cached data: {e}", file=sys.stderr)
             sys.exit(1)
-
 
     def _save_cached_data(self):
         try:
@@ -156,32 +151,24 @@ class ShareBooster:
                          panel=True):
         console_method = self.stderr.print if style_type == "error" else self.stdout.print
         border_style = self.info_border
-        
+        text_style = f"[{style_type}]{message}[/{style_type}]"
         if style_type == "error":
             border_style = self.error_border
-            title_style = self.error_text
         elif style_type == "success":
             border_style = self.success_border
-            title_style = self.success_text
         elif style_type == "warning":
             border_style = self.warning_border
-            title_style = self.warning_text
-        else: 
-            border_style = self.info_border
-            title_style = self.info_text
-
 
         if panel:
             console_method(
-                Panel(Text.from_markup(f"[{style_type}]{message}[/{style_type}]"), 
-                      title=f"[{title_style}]{title}[/]", 
+                Panel(Text.from_markup(text_style),
+                      title=f"[{style_type}]{title}[/{style_type}]",
                       border_style=border_style,
                       expand=False))
         else:
-            console_method( 
-                Text.from_markup(f"[{title_style}]{title}:[/] [{style_type}]{message}[/{style_type}]")
-            )
-
+            console_method(
+                Text.from_markup(
+                    f"[{style_type}]{title}: {message}[/{style_type}]"))
 
     def _clear_screen(self):
         os.system("cls" if os.name == "nt" else "clear")
@@ -229,30 +216,22 @@ class ShareBooster:
             ("]─────[", "dim white"), ("#", "prompt_symbol"),
             ("]\n└─[", "dim white"), (prompt_indicator, "prompt_bracket_text"),
             ("]────► ", "prompt_symbol"))
-        
-        if password:
-            return Prompt.ask(prompt_text, password=True, console=self.stdout)
-        else:
-            self.stdout.print(prompt_text, end="")
-            user_input = self.stdout.input() 
-            return user_input.strip()
-
+        self.stdout.print(prompt_text, end="")
+        user_input = self.stdout.input()
+        return user_input.strip()
 
     def _prompt_credentials(self):
         self.stdout.print(
-            Panel(Text("Facebook login required to continue.", style=self.info_text), 
-                  title=f"[{self.info_text}]Authentication[/]",
-                  border_style=self.info_border,
-                  expand=False
-            ))
+            Panel(Text("Facebook login required.", style="info"),
+                  border_style=self.info_border))
         self.email = self._prompt_ask("Email/Username", prompt_indicator="~")
         self.password = self._prompt_ask("Password",
-                                         prompt_indicator="~",
-                                         password=False)
+                                         prompt_indicator="key",
+                                         password=True)
 
     def fetch_cookies(self):
         with self.stdout.status(Text.from_markup(
-                f"[{self.info_text}]Authenticating and fetching cookies...[/]"),
+                "[info]Authenticating and fetching cookies...[/info]"),
                                 spinner="dots12"):
             params = {
                 'adid': 'e3a395f9-84b6-44f6-a0ce-fe83e934fd4d',
@@ -324,7 +303,7 @@ class ShareBooster:
 
     def fetch_access_token(self):
         with self.stdout.status(
-                Text.from_markup(f"[{self.info_text}]Fetching access token...[/]"),
+                Text.from_markup("[info]Fetching access token...[/info]"),
                 spinner="moon"):
             headers = self._get_business_page_headers()
             try:
@@ -350,9 +329,9 @@ class ShareBooster:
                     ) or "checkpoint" in response.url.lower():
                         self._display_message(
                             "Redirected to login/checkpoint. Cookies might be expired.",
-                            title="Token Error Hint", 
+                            title="Token Error",
                             style_type="warning")
-                        self.cookies_string = "" 
+                        self.cookies_string = ""
                         self.cached_data.pop('cookies_string', None)
                         self._save_cached_data()
                     return False
@@ -367,58 +346,52 @@ class ShareBooster:
                     title="Token Error",
                     style_type="error")
                 return False
-            except AttributeError: 
+            except AttributeError:
                 self._display_message(
                     "Failed to parse access token structure (AttributeError).",
                     title="Token Error",
                     style_type="error")
                 return False
 
-
     def _generate_live_layout(self, log_table):
         layout = Layout(name="root")
-        layout.split_column(Layout(name="header", size=3), Layout(name="log_display_area"))
-        
+        layout.split_column(Layout(name="header", size=3), Layout(name="log"))
         summary_text = Text.assemble(
-            ("Shares: ", f"bold {self.column_attempt}"), 
+            ("Shares: ", "bold"),
             (f"{self.share_attempt_count}", self.column_attempt),
-            (" Attempted / ", f"bold {self.success_text}"),
+            (" Attempted / ", "bold"),
             (f"{self.success_share_count}", self.success_text),
-            (" Succeeded / ", f"bold {self.error_text}"),
+            (" Succeeded / ", "bold"),
             (f"{self.error_share_count}", self.error_text),
-            (" Failed", f"bold {self.error_text}"), 
-            (" | Plan: ", f"bold {self.premium_title_color}"), 
-            ("PREMIUM", f"{self.premium_badge}") 
-        )
-        header_panel = Panel(
-            Align.center(summary_text),
-            title=f"[{self.premium_panel_title}]📊 Live Share Statistics[/]",
-            border_style=self.premium_panel_border,
-            padding=(0, 1),
-            title_align="center"
-        )
+            (" Failed", "bold"))
+        header_panel = Panel(Align.center(summary_text),
+                             title="[bold]Live Share Statistics[/bold]",
+                             border_style=self.info_border,
+                             padding=(0, 1))
         layout["header"].update(header_panel)
-        layout["log_display_area"].update(log_table)
+        layout["log"].update(log_table)
         return layout
 
     def perform_share(self):
         share_url = f"{graph_api}?link=https://m.facebook.com/{self.post_id}&published=0&access_token={self.access_token}"
         share_headers = {
-            'accept': '*/*',
-            'accept-encoding': 'gzip, deflate',
-            'connection': 'keep-alive',
-            'cookie': self.cookies_string,
-            'host': 'graph.facebook.com',
-            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.93 Safari/537.36 Edg/90.0.818.51'
+            'accept':
+            '*/*',
+            'accept-encoding':
+            'gzip, deflate',
+            'connection':
+            'keep-alive',
+            'cookie':
+            self.cookies_string,
+            'host':
+            'graph.facebook.com',
+            'user-agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.93 Safari/537.36 Edg/90.0.818.51'
         }
-        log_table = Table(
-            title=f"[{self.info_text}]Sharing Log for Post ID: [bold cyan]{self.post_id}[/bold cyan][/]",
-            show_lines=False,
-            expand=True,
-            border_style=self.info_border, 
-            header_style=self.table_header,
-            title_align="center"
-        )
+        log_table = Table(title=f"Sharing Log for Post ID: {self.post_id}",
+                          show_lines=False,
+                          expand=True,
+                          border_style=self.info_border)
         log_table.add_column("Attempt",
                              justify="right",
                              style=self.column_attempt,
@@ -434,34 +407,26 @@ class ShareBooster:
         self.stdout.print(
             Padding(
                 Panel(Text.from_markup(
-                    f"[{self.info_text}]Starting shares for Post ID: [bold cyan]{self.post_id}[/bold cyan]. Press [bold red]Ctrl+C[/bold red] to stop.[/]"
+                    f"[info]Starting shares for Post ID: [bold cyan]{self.post_id}[/bold cyan]. Press [bold red]Ctrl+C[/bold red] to stop.[/info]"
                 ),
-                      title=f"[{self.info_text}]Action[/]",
                       border_style=self.info_border,
-                      expand=False,
-                      title_align="center"), 
-                      (1, 0, 1, 0) 
-            )
-        )
+                      expand=False), (1, 0)))
 
         current_live_instance = None
-        loop_exited_unexpectedly = True 
+        loop_exited_unexpectedly = True
 
         try:
             with Live(self._generate_live_layout(log_table),
                       console=self.stdout,
-                      refresh_per_second=4, 
-                      screen=False, 
+                      refresh_per_second=2,
+                      screen=False,
                       vertical_overflow="visible") as live:
                 current_live_instance = live
                 try:
                     while True:
                         self.share_attempt_count += 1
                         timestamp = datetime.now().strftime("%H:%M:%S")
-                        status_icon, status_text, details_text, status_style_tag = "", "", "", ""
-                        
-                        current_status_style_for_text = self.info_text 
-
+                        status_icon, status_text, details_text, status_style = "", "", "", ""
                         raw_response_text_debug = ""
 
                         try:
@@ -471,190 +436,169 @@ class ShareBooster:
                                 timeout=request_timeout)
                             raw_response_text_debug = response.text
                             data = response.json()
-                            response.raise_for_status() 
+                            response.raise_for_status()
 
                             if 'id' in data:
                                 self.success_share_count += 1
-                                status_icon, status_text, details_text = "✅", "Success", f"FB ID: {data['id']}"
-                                current_status_style_for_text = self.success_text
-                            else: 
+                                status_icon, status_text, details_text, status_style = "✅", "Success", f"FB ID: {data['id']}", self.success_text
+                            else:
                                 self.error_share_count += 1
-                                error_detail = data.get('error', {}).get('message', str(data))
-                                status_icon, status_text, details_text = "❌", "Failed (API)", error_detail
-                                current_status_style_for_text = self.error_text
-
+                                error_detail = data.get('error', {}).get(
+                                    'message', str(data))
+                                status_icon, status_text, details_text, status_style = "❌", "Failed (API)", error_detail, self.error_text
                         except requests.exceptions.HTTPError as e:
                             self.error_share_count += 1
-                            status_icon = "❌"
-                            status_text = f"HTTP Error {e.response.status_code}"
-                            current_status_style_for_text = self.error_text
+                            status_icon, status_text = "❌", f"HTTP Error {e.response.status_code}"
+                            error_message = f"HTTP {e.response.status_code}"
+                            fb_error_detail = ""
                             try:
                                 fb_error_data = e.response.json()
-                                details_text = fb_error_data.get('error', {}).get('message', e.response.text[:100])
+                                fb_error_detail = fb_error_data.get(
+                                    'error', {}).get('message',
+                                                     str(fb_error_data))
                             except json.JSONDecodeError:
-                                details_text = e.response.text[:100] 
-                        
+                                fb_error_detail = e.response.text[:200]
+
+                            if fb_error_detail: error_message = fb_error_detail
+                            details_text, status_style = error_message, self.error_text
                         except requests.exceptions.Timeout:
                             self.error_share_count += 1
-                            status_icon, status_text, details_text = "⏳", "Timeout", f"Request timed out after {request_timeout}s."
-                            current_status_style_for_text = self.warning_text
-                        except requests.exceptions.RequestException as e: 
+                            status_icon, status_text, details_text, status_style = "⏳", "Timeout", f"Request timed out after {request_timeout}s.", self.warning_text
+                        except requests.exceptions.RequestException as e:
                             self.error_share_count += 1
-                            status_icon, status_text, details_text = "❌", "Network Error", str(e)
-                            current_status_style_for_text = self.error_text
+                            status_icon, status_text, details_text, status_style = "❌", "Network Error", str(
+                                e), self.error_text
                         except json.JSONDecodeError:
                             self.error_share_count += 1
-                            snippet = raw_response_text_debug[:100] if raw_response_text_debug else "Response was empty."
-                            status_icon, status_text, details_text = "❓", "JSON Error", f"Invalid JSON: {snippet}..."
-                            current_status_style_for_text = self.error_text
-                        except Exception as e: 
+                            snippet = raw_response_text_debug[:
+                                                              100] if raw_response_text_debug else "Response was empty or not captured."
+                            status_icon, status_text, details_text, status_style = "❓", "JSON Error", f"Invalid JSON: {snippet}...", self.error_text
+                        except Exception as e:
                             self.error_share_count += 1
-                            status_icon, status_text, details_text = "💥", "Unknown Loop Error", str(e)
-                            current_status_style_for_text = self.error_text
+                            status_icon, status_text, details_text, status_style = "💥", "Unknown Loop Error", str(
+                                e), self.error_text
 
-                        if log_table.row_count >= max_log_entries and max_log_entries > 0:
-                             log_table.rows.pop(0) 
+                        if log_table.rows and len(
+                                log_table.rows) >= max_log_entries:
+                            if max_log_entries > 0:
+                                log_table.rows.pop(0)
 
-                        if max_log_entries > 0 : 
+                        if max_log_entries > 0:
                             log_table.add_row(
-                                str(self.share_attempt_count),
-                                timestamp,
-                                Text.from_markup(f"{status_icon} [{current_status_style_for_text}]{status_text}[/]"),
-                                details_text
-                            )
-                        
+                                str(self.share_attempt_count), timestamp,
+                                Text.from_markup(
+                                    f"{status_icon} [{status_style}]{status_text}[/{status_style}]"
+                                ), details_text)
                         live.update(self._generate_live_layout(log_table))
                         time.sleep(share_interval_seconds)
 
                 except KeyboardInterrupt:
-                    loop_exited_unexpectedly = False 
-                    if current_live_instance: 
+                    loop_exited_unexpectedly = False
+                    if current_live_instance:
                         try:
                             current_live_instance.update(Text(
-                                f"\n[{self.warning_text}]Share process interrupted by user. Finalizing...[/]",
-                                justify="center"), refresh=True)
-                            time.sleep(0.5) 
+                                "\n[warning]Share process interrupted. Finalizing display...[/warning]",
+                                justify="center"),
+                                                         refresh=True)
                         except Exception:
-                            pass 
-                    raise 
+                            pass
+                    raise
 
-        except KeyboardInterrupt: 
-            loop_exited_unexpectedly = False 
-            pass 
-        except Exception as e: 
-            loop_exited_unexpectedly = False 
+        except KeyboardInterrupt:
+            loop_exited_unexpectedly = False
+            raise
+        except Exception as e:
+            loop_exited_unexpectedly = False
             if not isinstance(e, KeyboardInterrupt):
                 self.stderr.print(
                     Panel(Text.from_markup(
-                        f"[{self.error_text}]Critical error in share process: {type(e).__name__}: {e}[/]"
+                        f"[error]Error in perform_share's Live context or unhandled from loop: {type(e).__name__}: {e}[/error]"
                     ),
-                          title=f"[{self.error_text}]Share Loop Error[/]",
-                          border_style=self.error_border,
-                          title_align="center")
-                )
+                          title="[error]Critical Share Loop Error[/error]",
+                          border_style=self.error_border))
+                import traceback
+                traceback.print_exc(file=sys.stderr)
             raise
         finally:
             if loop_exited_unexpectedly:
-                self.stderr.print(
-                    Panel(Text.from_markup(
-                        f"[{self.warning_text}]The share loop seems to have exited unexpectedly.[/]"
-                    ), title=f"[{self.warning_text}]Loop Exit Warning[/]", 
-                       border_style=self.warning_border,
-                       title_align="center")
-                )
-
+                pass
 
     def extract_post_id(self):
         patterns = [
             r"pfbid([\w-]+)",
-            r"(?:posts|videos|photos|permalink|reel)/(?:[\w.-]+/)?(\d+|pfbid[\w.-]+)", 
-            r"(?:story_fbid=|fbid=|v=)(\d+|pfbid[\w.-]+)"
+            r"(?:posts|videos|photos|permalink)/(?:[\w.-]+/)?(\d+|pfbid0[\w.-]+)",
+            r"(?:story_fbid=|fbid=|v=)(\d+|pfbid0[\w.-]+)"
         ]
-        extracted_id = None
         for pattern in patterns:
             match = re.search(pattern, self.post_url)
             if match:
-                potential_id = match.group(match.lastindex or 1) 
-                
-                if "pfbid" in pattern and potential_id.startswith("pfbid"):
-                    extracted_id = potential_id
-                    break
-                elif potential_id.startswith("pfbid"): 
-                    extracted_id = potential_id
-                    break
-                elif potential_id.isdigit() and (extracted_id is None or not extracted_id.startswith("pfbid")):
-                    extracted_id = potential_id
-        if extracted_id:
-            self.post_id = extracted_id
-            self.stdout.print(
-                Panel(Text.from_markup(
-                    f"[{self.success_text}]Extracted Post ID: [bold cyan]{self.post_id}[/bold cyan][/]"
-                ),
-                      title=f"[{self.success_text}]ID Found[/]",
-                      border_style=self.success_border, expand=False,
-                      title_align="center")
-            )
-            return
+                potential_id = match.group(1)
+                if pattern == r"pfbid([\w-]+)":
+                    self.post_id = "pfbid" + potential_id
+                elif "pfbid" in match.group(0) and not potential_id.startswith("pfbid"):
+                    pfbid_match_in_full = re.search(r"(pfbid[\w.-]+)", match.group(0))
+                    if pfbid_match_in_full:
+                        self.post_id = pfbid_match_in_full.group(1)
+                    else:
+                        self.post_id = potential_id
+                else:
+                    self.post_id = potential_id
 
+                self.stdout.print(
+                    Panel(Text.from_markup(
+                        f"[success]Extracted Post ID: [bold cyan]{self.post_id}[/bold cyan][/success]"
+                    ),
+                          border_style=self.success_border))
+                return
         self._display_message(
             "Could not automatically extract Post ID from URL.",
             title="Input Required",
             style_type="warning")
         self.stdout.print(
             Panel(Text.from_markup(
-                "Examples:\n- From `.../posts/pfbidABC...` -> `pfbidABC...`\n- From `.../posts/123...` -> `123...`\n- From `...story_fbid=pfbidXYZ...` -> `pfbidXYZ...`"
+                "Examples:\n- From `.../posts/123...` -> `123...`\n- From `...story_fbid=pfbidABC...` -> `pfbidABC...`"
             ),
                   title=
-                  f"[{self.prompt_bracket}]Manual Post ID Entry[/]", 
-                  border_style=self.prompt_bracket, 
-                  padding=(0, 1),
-                  title_align="center")
-            )
-        self.post_id = self._prompt_ask("Post ID", prompt_indicator="🆔")
+                  "[prompt_bracket_text]Manual Post ID Entry[/prompt_bracket_text]",
+                  border_style=self.prompt_bracket,
+                  padding=(0, 1)))
+        self.post_id = self._prompt_ask("Post ID", prompt_indicator="id")
         if not self.post_id:
             self._display_message("Post ID cannot be empty. Exiting.",
                                   title="Invalid Input",
                                   style_type="error")
             sys.exit(1)
 
-
     def check_cookies_validity(self):
         if not self.cookies_string:
-            self.stdout.print(Text.from_markup(f"[{self.info_text}]No cached cookies found. Proceeding to login.[/]"))
             return False
 
         session_ok = False
         error_to_report_after_status = None
 
         with self.stdout.status(
-                Text.from_markup(f"[{self.info_text}]Verifying session...[/]"),
+                Text.from_markup("[info]Verifying session...[/info]"),
                 spinner="hearts"):
             headers = self._get_business_page_headers()
             try:
-                response = self.session.get("https://www.facebook.com/home.php", 
-                                            headers=headers, 
+                response = self.session.get(business_api,
+                                            headers=headers,
                                             timeout=10,
-                                            allow_redirects=False) 
-                
-                if response.status_code == 200 and ("logout" in response.text.lower() or "mbasic_logout_button" in response.text.lower()):
+                                            allow_redirects=True)
+                if response.ok and \
+                   ("content_management" in response.url or "business_suite" in response.url) and \
+                   ("logout" in response.text or "composer" in response.text or "EAAG" in response.text):
                     session_ok = True
-                elif response.is_redirect or response.status_code in [301, 302, 303, 307, 308]:
-                    location = response.headers.get('Location', '').lower()
-                    if "login" in location or "checkpoint" in location:
+                else:
+                    if "login" in response.url.lower() or "checkpoint" in response.url.lower():
                         error_to_report_after_status = (
                         "Cached session redirected to login/checkpoint. Cookies likely expired.",
                         "Session Invalid", "warning")
                     else:
-                        error_to_report_after_status = (
-                        f"Session check resulted in a redirect (Status: {response.status_code}, To: {location[:50]}...). Assuming invalid.",
+                         error_to_report_after_status = (
+                        f"Session verification failed. Status: {response.status_code}. URL: {response.url}",
                         "Session Invalid", "warning")
                     session_ok = False
-                else: 
-                     error_to_report_after_status = (
-                    f"Session verification failed. Status: {response.status_code}. URL: {response.url}. Content hint: {response.text[:100]}",
-                    "Session Invalid", "warning")
-                     session_ok = False
-
             except requests.exceptions.Timeout:
                 error_to_report_after_status = (
                     "Timeout while verifying session.", "Session Check Failed",
@@ -668,21 +612,18 @@ class ShareBooster:
                     "error")
                 session_ok = False
 
-            time.sleep(0.5) 
+            time.sleep(0.2)
 
         if error_to_report_after_status:
             msg, title, style = error_to_report_after_status
             self._display_message(msg,
                                   title=title,
                                   style_type=style,
-                                  panel=True) 
+                                  panel=False)
         elif session_ok:
             self.stdout.print(
                 Text.from_markup(
-                    f" [{self.success_text}]✔ Session active.[/]"))
-        else: 
-             self._display_message("Session is not active. Please log in.", "Session Invalid", "warning", panel=True)
-
+                    " [green]✔[/green] [dim]Session active.[/dim]"))
 
         return session_ok
 
@@ -691,141 +632,104 @@ class ShareBooster:
         original_author_name = self._get_decrypted_original_author()
         modifier_name = self._get_decrypted_modifier_name()
 
-        premium_status_text = Text("🏅 PREMIUM PLAN ACTIVATED 🏅", style=self.premium_badge, justify="center")
-        title_text = Text(f"🚀 Shareb00st3r v2 🚀", style=self.script_name_style, justify="center")
-        
+        title_text = Text("  🚀 Shareb00st3r v2 🚀",
+                          style=self.welcome_title,
+                          justify="center")
         original_credit_text = Text.from_markup(
-            f"Made with [red]❤[/red] by [{self.credit_original}]{original_author_name}[/]", 
-            style=self.credit_original, 
+            f"Made with [red]❤[/red] by [bold cyan]{original_author_name}[/bold cyan]",
+            style=self.credit_original,
             justify="center")
         modifier_credit_text = Text.from_markup(
-            f"Modified by [{self.credit_modifier}]{modifier_name}[/]", 
-            style=self.credit_modifier, 
+            f"Modified by [bold #90EE90]{modifier_name}[/bold #90EE90]",
+            style=self.credit_modifier,
             justify="center")
-        
-        separator = Text("─" * 35, style=f"dim {self.premium_main_color}", justify="center")
-
         welcome_panel_content = Text("\n").join(
-            [title_text,
-             premium_status_text,
-             separator,
-             original_credit_text,
-             modifier_credit_text]
-        )
-
-        welcome_panel = Panel(
-            welcome_panel_content,
-            title=f"[{self.premium_panel_title}]Welcome[/]",
-            border_style=self.premium_panel_border,
-            padding=(1, 2), 
-            expand=False,
-            title_align="center"
-        )
-        top_padding = 1 
-        self.stdout.print(Padding(Align.center(welcome_panel), (top_padding, 0, 2, 0))) 
-
+            [title_text, original_credit_text, modifier_credit_text])
+        welcome_panel = Panel(welcome_panel_content,
+                              title="[bold #FFBF00]Welcome[/bold #FFBF00]",
+                              border_style=self.welcome_border,
+                              padding=(1, 2))
+        top_padding = 2
+        self.stdout.print(
+            Padding(Align.center(welcome_panel), (top_padding, 0, 0, 0)))
 
     def run(self):
         self._display_welcome_message()
+        time.sleep(0.5)
+
         session_initially_valid = False
         if self.cookies_string:
             session_initially_valid = self.check_cookies_validity()
-        
+
         if not session_initially_valid:
-            if self.cookies_string: 
-                self._display_message("Cached session is invalid or expired. Please log in again.", 
-                                      title="Session Expired", style_type="warning")
-            self.stdout.print() 
+            self.stdout.print()
             self._prompt_credentials()
             if not self.fetch_cookies():
                 self._display_message("Login failed. Cannot continue.",
                                       title="Fatal Error",
                                       style_type="error")
                 sys.exit(1)
-        
-        self.stdout.print() 
-        self.post_url = self._prompt_ask("Facebook Post URL",
-                                         prompt_indicator="🔗")
-        self.extract_post_id()
 
-        if not self.access_token: 
-            if not self.fetch_access_token():
-                self._display_message(
-                    "Could not obtain access token. Possible reasons:\n"
-                    "- Cookies expired (try --clear-session & re-login)\n"
-                    "- Facebook API/page structure changed\n"
-                    "- Account restrictions or checkpoint",
-                    title="Fatal Error: Token Acquisition Failed",
-                    style_type="error")
-                sys.exit(1)
+        self.stdout.print()
+        self.post_url = self._prompt_ask("Facebook Post URL",
+                                         prompt_indicator="~")
+        self.extract_post_id()
+        if not self.fetch_access_token():
+            self._display_message(
+                "Could not obtain access token. Possible reasons:\n- Cookies expired (delete .session.json & re-login)\n- FB API/page structure changed\n- Account restrictions",
+                title="Fatal Error",
+                style_type="error")
+            sys.exit(1)
 
         self._clear_screen()
         self.perform_share()
 
 
 if __name__ == "__main__":
-    temp_console = Console()
-
     if "--clear-session" in sys.argv or "--logout" in sys.argv:
-        temp_console.print(f"[*] Attempting to clear cached session data from '{session_cache_file}'...")
+        print(f"[*] Attempting to clear cached session data from '{session_cache_file}'...")
         try:
             if os.path.exists(session_cache_file):
                 os.remove(session_cache_file)
-                temp_console.print(f"[green][+][/green] Successfully deleted '{session_cache_file}'.")
-                temp_console.print("[*] Cached session has been cleared. You will need to log in again on the next run.")
+                print(f"[+] Successfully deleted '{session_cache_file}'.")
+                print("[*] Cached session has been cleared. You will need to log in again on the next run.")
             else:
-                temp_console.print(f"[*] '{session_cache_file}' not found. No cached session to clear.")
+                print(f"[*] '{session_cache_file}' not found. No cached session to clear.")
         except OSError as e:
-            temp_console.print(f"[red][!][/red] Error deleting '{session_cache_file}': {e}")
-            temp_console.print("[!] Please try deleting the file manually if necessary.")
+            print(f"[!] Error deleting '{session_cache_file}': {e}")
+            print("[!] Please try deleting the file manually if necessary.")
         except Exception as e:
-            temp_console.print(f"[red][!][/red] An unexpected error occurred while clearing session: {e}")
+            print(f"[!] An unexpected error occurred while clearing session: {e}")
         sys.exit(0)
 
-    booster = None 
+    booster = ShareBooster()
     try:
-        booster = ShareBooster()
         booster.run()
     except KeyboardInterrupt:
-        if booster: 
-            booster.stdout.print("\n") 
-            final_summary_text = Text.assemble(
-                ("Sharing interrupted by user.\n", f"bold {booster.warning_text}"),
-                ("Total Attempted: ", "bold default"),
-                (f"{booster.share_attempt_count}", booster.column_attempt),
-                (" | Succeeded: ", "bold default"),
-                (f"{booster.success_share_count}", booster.success_text),
-                (" | Failed: ", "bold default"),
-                (f"{booster.error_share_count}", booster.error_text)
-            )
-            booster.stdout.print(
-                Panel(Align.center(final_summary_text),
-                      title=f"[{booster.warning_text}]Process Halted[/]",
-                      border_style=booster.warning_border,
-                      padding=(0,1),
-                      title_align="center")
-            )
-            booster.stdout.print(
-                Text.from_markup(
-                    f"\n[{booster.info_text}]Exiting Shareb00st3r. Maraming salamat![/] 👋") , justify="center"
-            )
-        else: 
-            temp_console.print("\n[yellow]Process interrupted early. Exiting.[/yellow]")
+        booster.stdout.print("\n")
+        final_summary = Text.assemble(
+            ("Sharing interrupted by user.\n", "bold warning"),
+            ("Total Attempted: ", "bold"),
+            (f"{booster.share_attempt_count}", booster.column_attempt),
+            (" | Succeeded: ", "bold"),
+            (f"{booster.success_share_count}", booster.success_text),
+            (" | Failed: ", "bold"),
+            (f"{booster.error_share_count}", booster.error_text))
+        booster.stdout.print(
+            Panel(Align.center(final_summary),
+                  title="[warning]Process Halted[/warning]",
+                  border_style=booster.warning_border))
+        booster.stdout.print(
+            Text.from_markup(
+                "\n[info]Exiting Shareb00st3r. thank you[/info] 👋"))
         sys.exit(0)
     except Exception as e:
-        console_err = getattr(booster, 'stderr', temp_console)
-        border_err = getattr(booster, 'error_border', 'bold red')
-        text_err = getattr(booster, 'error_text', 'bold red')
-
-        console_err.print(
+        booster.stderr.print(
             Panel(Text.from_markup(
-                f"[{text_err}]An unexpected critical error occurred: {type(e).__name__}: {e}\n"
-                f"This is likely a bug. Please report it if possible.[/]"
+                f"[error]An unexpected critical error occurred: {type(e).__name__}: {e}\nThis is likely a bug. Please report it if possible.[/error]"
             ),
-                  title=f"[{text_err}]Unhandled Exception[/]",
-                  border_style=border_err,
-                  title_align="center")
-        )
+                  title="[error]Unhandled Exception[/error]",
+                  border_style=booster.error_border))
         import traceback
-        console_err.print(f"\n[dim]{traceback.format_exc()}[/dim]")
+        booster.stderr.print(f"\n[dim]{traceback.format_exc()}[/dim]")
         sys.exit(1)
