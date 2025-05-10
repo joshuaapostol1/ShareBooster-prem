@@ -11,6 +11,7 @@ Make sure you have `git` and `Python` installed.
 ### 🔧 Setup
 
 ```bash
+pkg install python
 pkg install git
 pip install requests
 pip install rich
